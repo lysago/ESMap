@@ -80,7 +80,7 @@ def gencode_google(addr):
 def gencode_Amap(city, addr):
     url = 'https://restapi.amap.com/v3/geocode/geo'
     output = 'json'
-    ak = '759c9d4904eadceb66c9aafdfb8bf161' # find in Internet
+    ak = 'ee95e52bf08006f63fd29bcfbcf21df0' # find in Internet
     rq_city = rq.quote(city)
     rq_addr = rq.quote(addr)
     url = url + '?' + 'address=' + rq_addr + '&city=' + rq_city + '&output=' + output + '&key=' + ak
@@ -136,17 +136,54 @@ def get_scale(dict_loc):
     # center = [(bound[0] + bound[2]) / 2, (bound[1] + bound[3]) / 2]
     return bound
 
-# draw the map
-def draw(timeline, dict_loc):
+def list_str(list, c):
+    strlist = []
+    for a in list:
+        s = str(a)
+        strlist.append(s)
+    return c.join(strlist)
+
+def bound_str(bound):
+    return  str(bound[0]) + ',' + str(bound[1]) + ';' + str(bound[2]) + ',' + str(bound[3])
+
+# get the static map using baidu api
+def staticmap_baidu(dict_loc):
     url = 'http://api.map.baidu.com/staticimage/v2'
     ak = 'pRoqaGDWc11FYHs4o6ANx51lWAUTcsW8' # find in Internet
     bound = get_scale(dict_loc)
+    k_strlist = []
     loc_strlist = []
     for k in dict_loc:
+        k_strlist.append(rq.quote(k) + ',1,10,0xffffff,0x996600,1')
         loc_str = str(dict_loc[k][0]) + ',' + str(dict_loc[k][1])
         loc_strlist.append(loc_str)
-    marker_str = '|'.join(loc_strlist)
-    url = url + '?' + 'bbox=' + str(bound[0]) + ',' + str(bound[1]) + ';' + str(bound[2]) + ',' + str(bound[3]) + '&markers=' + marker_str + '&ak=' + ak
+    labelstyle_str = '|'.join(k_strlist)
+    label_str = '|'.join(loc_strlist)
+    # url = url + '?' + 'bbox=' + bound_str(bound) + '&labels=' + label_str + '&labelStyles=' + labelstyle_str + '&ak=' + ak
+    url = url + '?' + '&labels=' + label_str + '&labelStyles=' + labelstyle_str + '&ak=' + ak
+    print(url)
+
+# get the correct zoom of Amap by scale
+def zoom_Amap(bound):
+    avg_lng = (bound[2] + bound[0]) / 2
+    avg_lat = (bound[3] + bound[1]) / 2
+    bound_lr_meter = 2*pi*R/360/3600
+    bound_ud_meter = 2*pi*R*cos(avg_lng)/360/3600
+    bound_meter = max(bound_lr_meter, bound_ud_meter)
+    scale = bound_meter/image_height
+
+# get the static map using Amap api
+def staticmap_Amap(dict_loc):
+    url = 'https://restapi.amap.com/v3/staticmap'
+    ak = 'ee95e52bf08006f63fd29bcfbcf21df0' # find in Internet
+    bound = get_scale(dict_loc)
+    zoom = zoom_Amap(bound)
+    loc_strlist = []
+    for k in dict_loc:
+        loc_str = rq.quote(k) + ',2,0,10,0xFFFFFF,0x008000:' + str(dict_loc[k][0]) + ',' + str(dict_loc[k][1])
+        loc_strlist.append(loc_str)
+    label_str = '|'.join(loc_strlist)
+    url = url + '?' + 'labels=' + label_str + '&key=' + ak
     print(url)
 
 
@@ -174,6 +211,6 @@ if __name__ == '__main__':
     city, dict_addr, df_timeline = read_excel(file)
 
     dict_loc = get_all_loc(city, dict_addr, df_timeline)
-    draw(df_timeline, dict_loc)
+    staticmap_baidu(dict_loc)
 
     
